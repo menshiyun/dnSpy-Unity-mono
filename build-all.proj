@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="BuildAllTwoPhase" ToolsVersion="Current"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- 1. 每个 sln 用元数据绑定自己的 Configuration -->
+  <ItemGroup>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v4.x.sln">
+      <Configuration>Release_eglib</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v5.x.sln">
+      <Configuration>Release_eglib</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2017.x.sln">
+      <Configuration>Release_eglib</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2017.x-V40.sln">
+      <Configuration>Release</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2018.x.sln">
+      <Configuration>Release_eglib</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2018.x-V40.sln">
+      <Configuration>Release</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2019.x.sln">
+      <Configuration>Release_eglib</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2019.x-V40.sln">
+      <Configuration>Release</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2020.x.sln">
+      <Configuration>Release_eglib</Configuration>
+    </SolutionsToBuild>
+    <SolutionsToBuild Include="dnSpy-Unity-mono-v2020.x-V40.sln">
+      <Configuration>Release</Configuration>
+    </SolutionsToBuild>
+  </ItemGroup>
+
+  <!-- 2. 平台列表（供 BuildAll 使用） -->
+  <ItemGroup>
+    <TargetPlatforms Include="x86;x64" />
+  </ItemGroup>
+
+  <!-- 3. 解析“用户指定平台” -->
+  <!-- 优先使用 /p:BuildPlatform=...；其次如果 /p:Platform 是 x86/x64 也接受 -->
+  <PropertyGroup>
+    <_RequestedPlatform Condition="'$(BuildPlatform)' != ''">$(BuildPlatform)</_RequestedPlatform>
+    <_RequestedPlatform Condition="'$(_RequestedPlatform)' == '' and ('$(Platform)' == 'x86' or '$(Platform)' == 'x64')">$(Platform)</_RequestedPlatform>
+  </PropertyGroup>
+
+  <!-- 4. 方案 A：最大并行（笛卡尔积，保留原样） -->
+  <Target Name="BuildAll">
+    <MSBuild Projects="@(SolutionsToBuild)"
+             Targets="Build"
+             Properties="Configuration=%(SolutionsToBuild.Configuration);Platform=%(TargetPlatforms.Identity)"
+             BuildInParallel="true"
+             StopOnFirstFailure="true" />
+  </Target>
+
+  <!-- 5. 方案 B：两阶段并行，平台可指定 -->
+  <Target Name="BuildAllTwoPhase">
+    <!-- 未指定平台，或指定 x86：执行 x86 阶段 -->
+    <MSBuild Condition="'$(_RequestedPlatform)' == '' or '$(_RequestedPlatform)' == 'x86'"
+             Projects="@(SolutionsToBuild)"
+             Targets="Build"
+             Properties="Configuration=%(SolutionsToBuild.Configuration);Platform=x86"
+             BuildInParallel="true"
+             StopOnFirstFailure="true" />
+
+    <!-- 未指定平台，或指定 x64：执行 x64 阶段 -->
+    <MSBuild Condition="'$(_RequestedPlatform)' == '' or '$(_RequestedPlatform)' == 'x64'"
+             Projects="@(SolutionsToBuild)"
+             Targets="Build"
+             Properties="Configuration=%(SolutionsToBuild.Configuration);Platform=x64"
+             BuildInParallel="true"
+             StopOnFirstFailure="true" />
+  </Target>
+
+</Project>
