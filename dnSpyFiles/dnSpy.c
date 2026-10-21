@@ -1,4 +1,5 @@
-﻿// 0 = .NET 2.0-3.5 Unity
+﻿#include "dnSpy.h"
+// 0 = .NET 2.0-3.5 Unity
 // 1 = .NET 4.0+ Unity
 #ifndef DNUNITYRT
 #define DNUNITYRT 0

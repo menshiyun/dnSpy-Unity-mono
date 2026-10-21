@@ -18,6 +18,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -56,11 +57,35 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 				throw new ProgramException($"Line is '{value}' but expected line is '{expectedValue}'");
 		}
 
+		void Patch_mono_mini_debugger_insert_breakpoint(TextFilePatcher textFilePatcher, List<TextLine> lines) {
+			int index = textFilePatcher.GetIndexesOfLine(line => line.Text.StartsWith("insert_breakpoint (")).Single();
+			index = textFilePatcher.GetIndexOfLine(line => line.Text.Contains("gboolean it_has_sp = FALSE;"), index);
+			textFilePatcher.Insert(index + 1, "\tSeqPoint found_sp;");
+			index = textFilePatcher.GetIndexOfLine(line => line.Text.Contains("if (it.seq_point.il_offset == bp->il_offset) {"), index);
+			Verify(lines[index + 1].Text, "\t\t\tit_has_sp = TRUE;");
+			Verify(lines[index + 2].Text, "\t\t\tbreak;");
+			index += 2;
+			lines.RemoveAt(index);
+			textFilePatcher.Insert(index++, "\t\t\tif (!(it.seq_point.flags & MONO_SEQ_POINT_FLAG_NONEMPTY_STACK)) {");
+			textFilePatcher.Insert(index++, "\t\t\t\tfound_sp = it.seq_point;");
+			textFilePatcher.Insert(index++, "\t\t\t\tbreak;");
+			textFilePatcher.Insert(index++, "\t\t\t}");
+			textFilePatcher.Insert(index++, "\t\t\tfound_sp = it.seq_point;");
+			Verify(lines[index++].Text, "\t\t}");
+			Verify(lines[index++].Text, "\t}");
+			textFilePatcher.Insert(index++, "\tit.seq_point = found_sp;");
+		}
+
 		void Patch_mono_mini_debugger_agent_c() {
 			var filename = Path.Combine(solutionOptions.UnityVersionDir, "mono", "mini", "debugger-agent.c");
 			var textFilePatcher = new TextFilePatcher(filename);
 
 			var lines = textFilePatcher.Lines;
+
+			if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) >= 0) {
+				int index = textFilePatcher.GetIndexesOfLine(line => line.Text.StartsWith("#include \"debugger-agent.h\"")).Single();
+				textFilePatcher.Insert(index + 1, "#include \"../dnSpyFiles/dnSpy.h\"");
+			}
 
 			{
 				int index = textFilePatcher.GetIndexesOfLine(line => line.Text.Contains("agent_config.setpgid = parse_flag (\"setpgid\", arg + 8)")).Single();
@@ -70,28 +95,16 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 
 			{
 				int index = textFilePatcher.GetIndexesOfLine(line => line.Text.Contains("mono_native_tls_alloc (&debugger_tls_id, NULL);")).Single();
-				Verify(lines[index - 1].Text, string.Empty);
+				Verify(lines[index - 1].Text.Trim(), string.Empty);
 				textFilePatcher.Insert(index, string.Empty);
 				textFilePatcher.Insert(index, "\tdnSpy_debugger_init_after_agent ();");
 			}
 
-			{
-				int index = textFilePatcher.GetIndexesOfLine(line => line.Text.StartsWith("insert_breakpoint (")).Single();
-				index = textFilePatcher.GetIndexOfLine(line => line.Text.Contains("gboolean it_has_sp = FALSE;"), index);
-				textFilePatcher.Insert(index + 1, "\tSeqPoint found_sp;");
-				index = textFilePatcher.GetIndexOfLine(line => line.Text.Contains("if (it.seq_point.il_offset == bp->il_offset) {"), index);
-				Verify(lines[index + 1].Text, "\t\t\tit_has_sp = TRUE;");
-				Verify(lines[index + 2].Text, "\t\t\tbreak;");
-				index += 2;
-				lines.RemoveAt(index);
-				textFilePatcher.Insert(index++, "\t\t\tif (!(it.seq_point.flags & MONO_SEQ_POINT_FLAG_NONEMPTY_STACK)) {");
-				textFilePatcher.Insert(index++, "\t\t\t\tfound_sp = it.seq_point;");
-				textFilePatcher.Insert(index++, "\t\t\t\tbreak;");
-				textFilePatcher.Insert(index++, "\t\t\t}");
-				textFilePatcher.Insert(index++, "\t\t\tfound_sp = it.seq_point;");
-				Verify(lines[index++].Text, "\t\t}");
-				Verify(lines[index++].Text, "\t}");
-				textFilePatcher.Insert(index++, "\tit.seq_point = found_sp;");
+			if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) < 0) {
+				Patch_mono_mini_debugger_insert_breakpoint(textFilePatcher, lines);
+			}
+			else {
+				Patch_mono_mini_debugger_engine_c();
 			}
 
 			{
@@ -107,10 +120,29 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 			textFilePatcher.Write();
 		}
 
+		void Patch_mono_mini_debugger_engine_c() {
+			var filename = Path.Combine(solutionOptions.UnityVersionDir, "mono", "mini", "debugger-engine.c");
+			var textFilePatcher = new TextFilePatcher(filename);
+
+			var lines = textFilePatcher.Lines;
+
+			Patch_mono_mini_debugger_insert_breakpoint(textFilePatcher, lines);
+
+			textFilePatcher.Write();
+		}
+
 		void Patch_mono_mini_mini_runtime_c() {
 			var filename = Path.Combine(solutionOptions.UnityVersionDir, "mono", "mini", "mini-runtime.c");
 			var textFilePatcher = new TextFilePatcher(filename);
-			int index = textFilePatcher.GetIndexesOfLine(line => line.Text.Contains("CHECKED_MONO_INIT ();")).Single();
+			int index;
+
+			if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) >= 0) {
+				index = textFilePatcher.GetIndexesOfLine(line => line.Text.StartsWith("#include \"mini-runtime.h\"")).Single();
+				textFilePatcher.Insert(index + 1, "#include \"../dnSpyFiles/dnSpy.h\"");
+			}
+
+			index = textFilePatcher.GetIndexesOfLine(line => line.Text.Contains("CHECKED_MONO_INIT ();")).Single();
+
 			textFilePatcher.Insert(++index, string.Empty);
 			textFilePatcher.Insert(++index, "\tdnSpy_debugger_init ();");
 			textFilePatcher.Write();
@@ -147,6 +179,8 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 
 		void Patch_bdwgc_gc_atomic_ops_h() {
 			if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2018, 3, 0, UnityVersionRelease.Untyped, "-mbe")) < 0)
+				return;
+			if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) >= 0)
 				return;
 			var filename = Path.Combine(solutionOptions.UnityVersionDir, "external", "bdwgc", "include", "private", "gc_atomic_ops.h");
 			var textFilePatcher = new TextFilePatcher(filename);

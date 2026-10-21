@@ -49,7 +49,7 @@ namespace UnityMonoDllSourceCodePatcher {
 		}
 
 		public void SubmoduleUpdate(string path) {
-			int result = Exec.Run(repoPath, gitPath, $"submodule update {path}");
+			int result = Exec.Run(repoPath, gitPath, $"submodule update --recursive {path}");
 			if (result != 0)
 				ThrowError($"Git submodule update {path} failed with error code {result}");
 		}

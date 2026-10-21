@@ -28,6 +28,7 @@ namespace UnityMonoDllSourceCodePatcher {
 		readonly GitRepo unityRepo;
 		protected readonly GitRepo dnSpyRepo;
 		protected readonly string dnSpyVersionPath;
+		public readonly UnityVersion UnityVersion;
 
 		protected Patcher(string unityVersion, string unityGitHash, string unityRepoPath, string dnSpyUnityMonoRepoPath, string gitExePath) {
 			this.unityVersion = unityVersion ?? throw new ArgumentNullException(nameof(unityVersion));
@@ -35,6 +36,8 @@ namespace UnityMonoDllSourceCodePatcher {
 			unityRepo = new GitRepo(gitExePath, unityRepoPath);
 			dnSpyRepo = new GitRepo(gitExePath, dnSpyUnityMonoRepoPath);
 			dnSpyVersionPath = Path.Combine(dnSpyUnityMonoRepoPath, Constants.UnityVersionPrefix + unityVersion);
+			if (!UnityVersion.TryParse(unityVersion, out UnityVersion))
+				throw new InvalidOperationException($"Invalid version: {unityVersion}");
 		}
 
 		void Log(string message) => Console.WriteLine(message);
@@ -44,7 +47,6 @@ namespace UnityMonoDllSourceCodePatcher {
 				throw new ProgramException($"Directory {dnSpyVersionPath} already exists");
 			CopyOriginalUnityFiles();
 			UpdateReadMe();
-			MergeMasterIntoDnSpy();
 			PatchOriginalFiles();
 		}
 
@@ -56,7 +58,7 @@ namespace UnityMonoDllSourceCodePatcher {
 			unityRepo.ThrowIfTreeNotClean();
 			dnSpyRepo.ThrowIfTreeNotClean();
 			unityRepo.CheckOut(unityGitHash);
-			dnSpyRepo.CheckOut(Constants.DnSpyUnityRepo_master_Branch);
+			dnSpyRepo.CheckOut(Constants.DnSpyUnityRepo_dnSpy_Branch);
 			dnSpyRepo.ThrowIfTreeNotClean();
 
 			var submodules = Submodules;
@@ -75,8 +77,12 @@ namespace UnityMonoDllSourceCodePatcher {
 			}
 
 			var gitignore = Path.Combine(dnSpyVersionPath, "mono", "cil", ".gitignore");
-			if (!TextFilePatcher.RemoveLines(gitignore, line => line.Text == "/opcode.def"))
-				throw new ProgramException("Couldn't remove /opcode.def from .gitignore");
+			TextFilePatcher.RemoveLines(gitignore, line => line.Text == "/opcode.def");
+
+			if (UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) >= 0) {
+				var bdwgc_gitignore = Path.Combine(dnSpyVersionPath, "external", "bdwgc", ".gitignore");
+				TextFilePatcher.RemoveLines(bdwgc_gitignore, line => line.Text == "/libatomic_ops*");
+			}
 
 			Log($"Committing copied files");
 			dnSpyRepo.CommitAllFiles($"Add Unity files ({Path.GetFileName(dnSpyVersionPath)}), commit hash {unityGitHash}");
@@ -107,8 +113,6 @@ namespace UnityMonoDllSourceCodePatcher {
 
 		void PatchOriginalFiles() {
 			Log($"Patching solution, projects and source code files");
-			dnSpyRepo.ThrowIfTreeNotClean();
-			dnSpyRepo.CheckOut(Constants.DnSpyUnityRepo_dnSpy_Branch);
 			dnSpyRepo.ThrowIfTreeNotClean();
 
 			PatchOriginalFilesCore();

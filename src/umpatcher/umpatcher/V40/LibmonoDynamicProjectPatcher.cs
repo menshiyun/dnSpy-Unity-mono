@@ -17,16 +17,15 @@
     along with umpatcher.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using System;
 using System.IO;
 
 namespace UnityMonoDllSourceCodePatcher.V40 {
 	sealed class LibmonoDynamicProjectPatcher : ProjectPatcherV40 {
-		readonly ProjectInfo libgcbdwgcProject;
+		readonly ProjectInfo? libgcbdwgcProject;
 
 		public LibmonoDynamicProjectPatcher(SolutionOptionsV40? solutionOptions)
 			: base(solutionOptions, solutionOptions?.LibmonoDynamicProject) {
-			libgcbdwgcProject = solutionOptions!.LibgcbdwgcProject ?? throw new InvalidOperationException();
+			libgcbdwgcProject = solutionOptions!.LibgcbdwgcProject;
 		}
 
 		protected override void PatchCore() {
@@ -34,8 +33,10 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 			PatchDebugInformationFormats(ConstantsV40.ReleaseConfigsWithNoPdb);
 			PatchGenerateDebugInformationTags(ConstantsV40.ReleaseConfigsWithNoPdb);
 			AddSourceFiles();
-			AddProjectReference(libgcbdwgcProject);
-			RemoveProjectReference("libgc.vcxproj");
+			if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) < 0) {
+				AddProjectReference(libgcbdwgcProject!);
+				RemoveProjectReference("libgc.vcxproj");
+			}
 			PatchSolutionDir();
 		}
 

@@ -25,12 +25,14 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 	enum ProjectFilesKind {
 		V2017,
 		V2018,
+		V2021_2,
 	}
 
 	sealed class SolutionOptionsV40 : SolutionOptions {
 		public readonly ProjectInfo? BuildInitProject;
 		public readonly ProjectInfo? EglibProject;
 		public readonly ProjectInfo? GenmdescProject;
+		public readonly ProjectInfo? LibgcProject;
 		public readonly ProjectInfo? LibgcbdwgcProject;
 		public readonly ProjectInfo? LibmonoProject;
 		public readonly ProjectInfo? LibmonoDynamicProject;
@@ -43,6 +45,7 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 				if (BuildInitProject != null) yield return BuildInitProject;
 				if (EglibProject != null) yield return EglibProject;
 				if (GenmdescProject != null) yield return GenmdescProject;
+				if (LibgcProject != null) yield return LibgcProject;
 				if (LibgcbdwgcProject != null) yield return LibgcbdwgcProject;
 				if (LibmonoProject != null) yield return LibmonoProject;
 				if (LibmonoDynamicProject != null) yield return LibmonoDynamicProject;
@@ -76,6 +79,14 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 				EglibProject = new ProjectInfo(ConstantsV40.OldGuid_eglib, Path.Combine(msvcPath, "eglib.vcxproj"));
 				GenmdescProject = new ProjectInfo(ConstantsV40.OldGuid_genmdesc, Path.Combine(msvcPath, "genmdesc.vcxproj"));
 				LibgcbdwgcProject = new ProjectInfo(ConstantsV40.OldGuid_libgcbdwgc, Path.Combine(msvcPath, "libgcbdwgc.vcxproj"));
+				LibmonoDynamicProject = new ProjectInfo(ConstantsV40.OldGuid_libmono_dynamic, Path.Combine(msvcPath, "libmono-dynamic.vcxproj"));
+				break;
+
+			case ProjectFilesKind.V2021_2:
+				BuildInitProject = new ProjectInfo(ConstantsV40.OldGuid_build_init, Path.Combine(msvcPath, "build-init.vcxproj"));
+				EglibProject = new ProjectInfo(ConstantsV40.OldGuid_eglib, Path.Combine(msvcPath, "eglib.vcxproj"));
+				GenmdescProject = new ProjectInfo(ConstantsV40.OldGuid_genmdesc, Path.Combine(msvcPath, "genmdesc.vcxproj"));
+				LibgcProject = new ProjectInfo(ConstantsV40.OldGuid_libgc, Path.Combine(msvcPath, "libgc.vcxproj"));
 				LibmonoDynamicProject = new ProjectInfo(ConstantsV40.OldGuid_libmono_dynamic, Path.Combine(msvcPath, "libmono-dynamic.vcxproj"));
 				break;
 

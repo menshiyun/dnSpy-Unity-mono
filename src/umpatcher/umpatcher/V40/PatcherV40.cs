@@ -18,19 +18,27 @@
 */
 
 using System;
+using System.Linq;
 
 namespace UnityMonoDllSourceCodePatcher.V40 {
 	sealed class PatcherV40 : Patcher {
 		readonly SolutionOptionsV40 solutionOptions;
+		private readonly string[] submodules;
 
 		public PatcherV40(string unityVersion, string unityGitHash, string unityRepoPath, string dnSpyUnityMonoRepoPath, string gitExePath, string windowsTargetPlatformVersion, string platformToolset)
 			: base(unityVersion, unityGitHash, unityRepoPath, dnSpyUnityMonoRepoPath, gitExePath) {
 			solutionOptions = new SolutionOptionsV40(dnSpyRepo.RepoPath, dnSpyVersionPath, unityVersion, windowsTargetPlatformVersion, platformToolset, GetProjectFilesKind(unityVersion));
+			submodules = ConstantsV40.Submodules;
+			if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) >= 0) {
+				submodules = submodules.Append("external/corefx").Distinct().ToArray();
+			}
 		}
 
 		static ProjectFilesKind GetProjectFilesKind(string unityVersion) {
 			if (!UnityVersion.TryParse(unityVersion, out var version))
 				throw new InvalidOperationException($"Invalid unity version: {unityVersion}");
+			if (version.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) >= 0)
+				return ProjectFilesKind.V2021_2;
 			if (version.Major >= 2018)
 				return ProjectFilesKind.V2018;
 			if (version.Major == 2017)
@@ -39,9 +47,12 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 			throw new Exception($"Unknown version: {version}");
 		}
 
-		protected override string[] Submodules => ConstantsV40.Submodules;
+		protected override string[] Submodules => submodules;
+
 		protected override string[] UnityFoldersToCopy {
 			get {
+				if (solutionOptions.UnityVersion.CompareTo(new UnityVersion(2021, 2, 0, UnityVersionRelease.Untyped, "-mbe")) >= 0)
+					return ConstantsV40.UnityFoldersToCopy_2021_2;
 				if (solutionOptions.UnityVersion.Major >= 2018)
 					return ConstantsV40.UnityFoldersToCopy_2018;
 				if (solutionOptions.UnityVersion.Major == 2017)
@@ -55,6 +66,7 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 			if (solutionOptions.BuildInitProject != null) new BuildInitProjectPatcher(solutionOptions).Patch();
 			if (solutionOptions.EglibProject != null) new EglibProjectPatcher(solutionOptions).Patch();
 			if (solutionOptions.GenmdescProject != null) new GenmdescProjectPatcher(solutionOptions).Patch();
+			if (solutionOptions.LibgcProject != null) new LibgcProjectPatcher(solutionOptions).Patch();
 			if (solutionOptions.LibgcbdwgcProject != null) new LibgcbdwgcProjectPatcher(solutionOptions).Patch();
 			if (solutionOptions.LibmonoProject != null) new LibmonoProjectPatcher(solutionOptions).Patch();
 			if (solutionOptions.LibmonoDynamicProject != null) new LibmonoDynamicProjectPatcher(solutionOptions).Patch();

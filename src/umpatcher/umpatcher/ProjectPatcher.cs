@@ -201,9 +201,9 @@ namespace UnityMonoDllSourceCodePatcher {
 			textFilePatcher.Replace(line => {
 				if (!line.Text.Contains("<OutDir"))
 					return line;
-				const string PATTERN = "\">";
+				const string PATTERN = ">";
 				int index = line.Text.IndexOf(PATTERN);
-				if (!line.Text.Contains("<OutDir Condition") || !line.Text.EndsWith("</OutDir>") || index < 0)
+				if (!line.Text.Contains("<OutDir") || !line.Text.EndsWith("</OutDir>") || index < 0)
 					throw new ProgramException("Unexpected tag content");
 				var first = line.Text.Substring(0, index + PATTERN.Length);
 				var newText = first + newValue + "</OutDir>";

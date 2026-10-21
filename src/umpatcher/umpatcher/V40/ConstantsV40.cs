@@ -38,6 +38,14 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 			"msvc",
 		};
 
+		public static readonly string[] UnityFoldersToCopy_2021_2 = new string[] {
+			"external/bdwgc",
+			"external/corefx/src/Native",
+			"mono",
+			"msvc",
+			"support/libm",
+		};
+
 		public const string SolutionFilenameFormatString = "dnSpy-Unity-mono-v{0}.x-V40.sln";
 		public static readonly string[] SolutionConfigurations = new string[] {
 			"Debug",
@@ -63,6 +71,7 @@ namespace UnityMonoDllSourceCodePatcher.V40 {
 		public static readonly Guid OldGuid_build_init = new Guid("92AE7622-5F58-4234-9A26-9EC71876B3F4");
 		public static readonly Guid OldGuid_eglib = new Guid("158073ED-99AE-4196-9EDC-DDB2344F8466");
 		public static readonly Guid OldGuid_genmdesc = new Guid("B7098DFA-31E6-4006-8A15-1C9A4E925149");
+		public static readonly Guid OldGuid_libgc = new Guid("EB56000B-C80B-4E8B-908D-D84D31B517D3");
 		public static readonly Guid OldGuid_libgcbdwgc = new Guid("CF169633-14AF-4DB8-BEF9-26A6C8FE4C90");
 		public static readonly Guid OldGuid_libmono = new Guid("CB0D9E92-293C-439C-9AC7-C5F59B6E0771");
 		public static readonly Guid OldGuid_libmono_dynamic = new Guid("675F4175-FFB1-480D-AD36-F397578844D4");
